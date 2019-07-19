@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html>
+<style>
+	html
+	{
+		background: #e5f2ff;
+
+	}
+	.wrap {
+                width: 650px; 
+                margin: 0 auto;
+                background: #fff7e5;
+                padding: 40px;
+            }
+
+    h1, h2, h3, h4, h5, h6 {
+    color: #333333;
+font-family: ‘Arial Narrow’, sans-serif;
+
+}
+p, div {
+    font-family: 'Nobile', Helvetica, Arial, sans-serif;
+}
+</style>
+<head>
+	<title>AudioManager Tutorial</title>
+	<link href="http://fonts.googleapis.com/css?family=Corben:bold" rel="stylesheet" type="text/css">
+ 	<link href="http://fonts.googleapis.com/css?family=Nobile" rel="stylesheet" type="text/css">
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+	<script type="text/javascript" src="scripts/shCore.js"></script>
+	<script type="text/javascript" src="scripts/shBrushBash.js"></script>
+	<script type="text/javascript" src="scripts/shBrushCpp.js"></script>
+	<script type="text/javascript" src="scripts/shBrushCSharp.js"></script>
+	<script type="text/javascript" src="scripts/shBrushCss.js"></script>
+	<script type="text/javascript" src="scripts/shBrushDelphi.js"></script>
+	<script type="text/javascript" src="scripts/shBrushDiff.js"></script>
+	<script type="text/javascript" src="scripts/shBrushGroovy.js"></script>
+	<script type="text/javascript" src="scripts/shBrushJava.js"></script>
+	<script type="text/javascript" src="scripts/shBrushJScript.js"></script>
+	<script type="text/javascript" src="scripts/shBrushPhp.js"></script>
+	<script type="text/javascript" src="scripts/shBrushPlain.js"></script>
+	<script type="text/javascript" src="scripts/shBrushPython.js"></script>
+	<script type="text/javascript" src="scripts/shBrushRuby.js"></script>
+	<script type="text/javascript" src="scripts/shBrushScala.js"></script>
+	<script type="text/javascript" src="scripts/shBrushSql.js"></script>
+	<script type="text/javascript" src="scripts/shBrushVb.js"></script>
+	<script type="text/javascript" src="scripts/shBrushXml.js"></script>
+	<link type="text/css" rel="stylesheet" href="styles/shCore.css"/>
+	<link type="text/css" rel="stylesheet" href="styles/shThemeDefault.css"/>
+	<script type="text/javascript">
+		SyntaxHighlighter.config.clipboardSwf = 'scripts/clipboard.swf';
+		SyntaxHighlighter.all();
+	</script>
+</head>
+<body class="wrap">
+
+<h1>iOS AudioManager Tutorial</h1>
+
+<p>The basis of this tutorial is the fact that web-audio api can sometimes fail to play some forms of streaming audio, and when it does it throws weird DOM errors. This tutorial is to provide a temporary solution to this problem until the web audio api is corrected, while also providing a simple and easy to use audioManager that is compatible with iOS6 - iOS9.</p>
+
+<p></p>
+
+<p>This tutorial has no prerequisites and should be golden for getting any beginner to use audio on iOS with javascript.</p>
+
+<p></p>
+
+<p>A link to the source code of this demo is <a href="./AudioMgr.zip"> here </a>. I highly suggest downloading this code and playing with it, I have abstracted away the details of the audio manager and it is relatively easy to use. I would suggest using the code I have linked as a template project for anyone who wants to use audio in iOS.</p>
+
+<video width="100%" controls>
+	<source src="demo.mp4" type="video/mp4">
+	Your browser does not support the video tag.
+</video>
+
+<h2>Loading the Audio Files</h2>
+
+<p>Loading mp3 files into javascript is fairly straightforward, however when dealing with downloading files for a web application we don&rsquo;t want to do any loading mid-game. As such, we should load in all audio assets at the beginning of the game. The download queue system will have a dictionary or key-value pairs of a nickname of the audio file as the key, and the URI of the audio file as the value. A visual representation of this dictionary is shown below.</p>
+
+<pre class="brush:js">
+{
+	“splash” : “splash.mp3”,
+“boop” : “genericBeep.mp3”
+“doh” : “aiusvdgig2uieipbu3h9-8.wav”
+}
+</pre>
+
+<h3>Adding files to a download queue</h3>
+
+<p>Adding to the download queue is very simple, the method implementation and and how to use it are shown below.</p>
+
+<pre class="brush:js">
+//audioMgr implementation
+AudioManager.prototype.addSoundToQueue = function(name, url)
+{
+    this.queue.push({name:name, url:url});
+}
+
+</pre>
+
+<pre class="brush:js">
+//how to use
+App.prototype.loadAudio = function()
+{
+	// adds a sound to a list of sounds to be downloaded
+	app.audioMgr.addSoundToQueue("back", "audio/background.mp3");
+
+	// first param is key to identify a sound, second is URI
+	app.audioMgr.addSoundToQueue("woohoo", "audio/woohoo.mp3");
+	app.audioMgr.addSoundToQueue("doh", "audio/doh.mp3");
+	app.audioMgr.addSoundToQueue("boop", "audio/beep.mp3");
+
+</pre>
+
+<h3>Downloading the file queue</h3>
+
+<p>To download any file we will need XHR but what is special about audio files is we have to set the responseType property of the XHR object to &ldquo;arraybuffer&rdquo;. Usually after all the files have been downloaded, you will need to start your game, so this method should take a callback function which will be called after the last file has finished downloading.</p>
+
+<p></p>
+
+<p>The code below shows the audioMgr implementation of how you would loop through and load each sound file. Calling this method should ideally download all audiofiles on the queue.</p>
+
+<pre class="brush:js">
+   AudioManager.prototype.downloadQueue = function(argDownloadCallback)
+  {
+    downloadCallback = argDownloadCallback;
+    for (var i = 0; i < queue.length; i++)
+    {
+      this.loadSoundFile(queue[i].name, queue[i].url);
+    }
+  }
+</pre>
+
+<p>As you can see above, this function takes a downloadCallback as parameter. This is because once the queue is downloaded, we want the app to be notified. We do this by calling the downloadCallback function after the queue becomes empty. The code below shows how to load each sound file using XHR</p>
+
+<pre class="brush:js">
+	AudioManager.prototype.loadSoundFile = function(name, url)
+  {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    var that = this;
+    xhr.onload = function(e) 
+    {
+        
+        //buffer containing sound returned by xhr
+        var arrayBuffer=this.response;
+
+        decode({buf:arrayBuffer}, name);
+
+    };
+
+    //send the xhr request to download the sound file
+    xhr.send();
+  }
+
+</pre>
+
+<h3>Decoding Audio Files</h3>
+
+<p>As you can see above, the response given from the xhr object is essentially an arraybuffer that needs decoding. Decoding the normal way would be using the webaudio::decodeAudioData function as outlined below;</p>
+
+<pre class="brush:js">
+	xhr.onload = function(e) {
+      
+      //buffer containing sound returned by xhr
+      var arrayBuffer=this.response;
+
+      audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+      //associate the audio buffer with the sound name so can use the decoded audio later.
+      audioBuffers[name]=buffer; 
+      
+      //initSound(this.response); // this.response is an ArrayBuffer.
+      }, function(e) {
+      console.log('Error decoding file', e);
+    }); 
+</pre>
+
+<p>However the above method has a bug, as mentioned at the beginning of this document. To fix this, when an error decoding occurs, due to weirdly formatted header boundaries we must resync those header boundaries manually. I wouldn&rsquo;t bother trying to understand exactly how this works as this gets fairly nitty gritty, however the code below should be fairly usable.</p>
+
+<p></p>
+
+<h2>Finicky &ldquo;Web Audio API&rdquo; Fix</h2>
+
+<p>The web audio API can sometimes fail to play some forms of streaming audio, and when it does it throws weird DOM errors. The fix for this is outlined below.</p>
+
+<pre class="brush:js">
+  function decode(node, name) 
+  {
+
+          audioContext.decodeAudioData(node.buf,
+          function(decoded)
+		  {
+              node.source  = audioContext.createBufferSource();
+              node.source.connect(audioContext.destination);
+              that.audioBuffers[name] = decoded; // this is where we associate buffer to audio file nickname.
+              that.soundLoaded(name);
+          },
+          function()
+          { // only on error attempt to sync on frame boundary
+              if(syncStream(node)) decode(node, name);
+          });
+
+  }
+</pre>
+
+<p>In the above function the code executes the exact same method used originally, except when there is an error, it will attempt to resync the header boundaries by calling syncstream. How to reset the boundaries is outlined below in this code snippet, it is fairly low-level so I wouldn&rsquo;t read it if you don&rsquo;t need to, just know how to use it.</p>
+
+<pre class="brush:js">
+	function syncStream(node)
+  { // should be done by api itself. and hopefully will.
+
+      var buf8 = new Uint8Array(node.buf); 
+      buf8.indexOf = Array.prototype.indexOf;
+      var i=node.sync, b=buf8;
+      while(1) {
+          node.retry++;
+          i=b.indexOf(0xFF,i); if(i==-1 || (b[i+1] & 0xE0 == 0xE0 )) break;
+          i++;
+      }
+      if(i!=-1) {
+          var tmp=node.buf.slice(i); //carefull there it returns copy
+          delete(node.buf); node.buf=null;
+          node.buf=tmp;
+          node.sync=i;
+          return true;
+      }
+      return false;
+  }
+</pre>
+
+<h2>Playing a Sound</h2>
+
+<p>Playing audio with the web audio api is very simple, there are 5 steps outlined below. This section assumes that the audio is already loaded in and unlocked.</p>
+
+<h3>Creating audioContext Object</h3>
+
+<p>Dependant on your browser, this object will go by different names. The easiest way to manage this is to create your own variable to create instances of these objects outlined by the codesnippet below.</p>
+
+<pre class="brush:js">
+try 
+{
+  // Fix up for prefixing
+  var AudioContext = window.AudioContext||window.webkitAudioContext;
+  audioContext = new AudioContext(); // local variable of audioMgr
+ }
+catch(e) 
+{
+  alert('Web Audio API is not supported in this browser');
+}
+</pre>
+
+<h3>Creating a buffer source</h3>
+
+<p>The buffer source is created very simply as an object inside audioContext. Create it using the code below.</p>
+
+<pre class="brush:js">
+.
+.
+var source = audioContext.createBufferSource();
+</pre>
+
+<h3>Setting the Audio Buffer</h3>
+
+<p>Your audio buffer is what we loaded in and associated with a nickname in the previous sections. Each name will have a corresponding audioBuffer. This allows us to encapsulate it in a function which takes a name as parameter to play a sound later.</p>
+
+<pre class="brush:js">
+//retrieve the buffer we stored earlier
+var audioBuffer = that.audioBuffers[name];
+
+//create a buffer source - used to play once and then a new one must be made
+var source = audioContext.createBufferSource();
+source.buffer = audioBuffer;
+</pre>
+
+<h3>Connecting the Buffer Source to your speakers</h3>
+
+<p>Very simply connect the source to our audio device.</p>
+
+<pre class="brush:js">
+var source = audioContext.createBufferSource();
+source.buffer = audioBuffer;
+.
+.
+source.connect(audioContext.destination); // this line
+
+</pre>
+
+<h3>Playing the sound</h3>
+
+<p>Playing the sound is different for iOS and every other browser, as such we have to use a ternary operator to decide which function to call on source. This line of code will work cross-platform.</p>
+
+<pre class="brush:js">
+	source.start ? source.start(0) : source.noteOn(0); // Play immediately. 
+
+</pre>
+
+<p>If we were to encapsulate the entire process into a function, and also take looping into account, it would look something like this.</p>
+
+<pre class="brush:js">
+  this.playSound = function(name, looping) 
+  { //optional second paramater, looping defaults to False
+
+    if(that.audioBuffers[name] === undefined)
+    {
+      console.log("Sound doesn't exist or hasn't been loaded")
+      return;
+    }
+    
+    //retrieve the buffer we stored earlier
+    var audioBuffer = that.audioBuffers[name];
+
+    //create a buffer source - used to play once and then a new one must be made
+
+    var source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start ? source.start(0) : source.noteOn(0); // Play immediately. 
+
+    if (looping)
+    { //if looping == true, restart the sound once it finishes
+      source.onended = function()
+      {
+        that.playSound(name, looping);
+      }
+    }
+    
+  }
+
+</pre>
+
+<h2>Unlocking Audio - iOS</h2>
+
+<p>IOS has a very weird &ldquo;feature&rdquo; in which it only allows audio to be played after a &ldquo;touchend&rdquo; event. As such I have created a simple unlock function which can be called after a touchend event, creates an empty sound programmatically, and then plays it. Afterwards, sound can be played whenever the user likes. The easiest way to force a user to unlock the sound on iOS is to have a splash screen. An example of this and a demo of the code in this document is in the video at the top of the tutorial. This is the unlock function I use.</p>
+
+<pre class="brush:js">
+  this.unlock = function() 
+  {
+    try 
+    {
+      // Fix up for prefixing
+      var AudioContext = window.AudioContext||window.webkitAudioContext;
+      audioContext = new AudioContext();
+    }
+    catch(e) 
+    {
+      alert('Web Audio API is not supported in this browser');
+    }
+
+    // create empty buffer
+    var buffer = audioContext.createBuffer(1, 1, 22050);
+    var source = audioContext.createBufferSource();
+    source.buffer = buffer;
+
+    // connect to output (your speakers)
+    source.connect(audioContext.destination);
+
+    source.onended = function()
+    {
+      callback();
+    }
+
+    // play the file
+    source.start ? source.start(0) : source.noteOn(0);
+
+    window.removeEventListener(eventType, that.unlock);
+  }
+
+}
+
+</pre>
+
+<h2>References</h2>
+
+<p>html5 rocks - <a href="http://www.html5rocks.com/en/tutorials/webaudio/intro/">http://www.html5rocks.com/en/tutorials/webaudio/intro/</a></p>
+
+<p>stack - <a href="http://stackoverflow.com/questions/10365335/decodeaudiodata-returning-a-null-error">http://stackoverflow.com/questions/10365335/decodeaudiodata-returning-a-null-error</a></p>
+
+<p>holovaty - <a href="http://www.holovaty.com/writing/ios9-web-audio/">http://www.holovaty.com/writing/ios9-web-audio/</a></p>
+
+
+
+
+</body>
+</html>

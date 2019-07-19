@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<!-- prevent scaling -->
+ <meta name="viewport" content="target-densitydpi=device-dpi, initial-scale=1.0, user-scalable=no" />
+  <style type="text/css">
+  .but
+  {
+  	/*button stuff*/
+  	width: 200px;
+  	height: 50px;
+  	display: block;
+  	margin:auto;
+  	margin-top: 10%;
+  	margin-bottom: 10%;
+  }
+
+  html, 
+body {
+	/*make splash screen scale to window*/
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    margin:0;
+
+}
+  </style>
+
+  <script src="js/App.js"></script>
+  <script src="js/Main.js"></script>
+  <script src="js/AudioManager.js"></script>
+
+</head>
+
+<body onload="main();">
+
+<!-- splash screen -->
+<img id="splash" src="./images/splash.jpg" style="height:100%;width:100%;"/>
+
+</body>
+
+</html>
